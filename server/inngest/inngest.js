@@ -127,7 +127,7 @@ const syncWorkspace = inngest.createFunction(
                         data: {
                             userId: data.created_by,
                             workspaceId: data.id,
-                            role: "ADMIN"
+                            role: "ADMIN" // Direct string, no mapping needed here
                         }
                     });
                     console.log(`✅ Workspace created with admin: ${data.id}`);
@@ -189,7 +189,7 @@ const syncWorkspaceMemberCreation = inngest.createFunction(
                 data: {
                     userId: userId,
                     workspaceId: workspaceId,
-                    role: String(role).toUpperCase()
+                    role: mapClerkRoleToPrisma(role) // Use the mapping function
                 }
             });
             console.log(`✅ Workspace member created: ${userId} in ${workspaceId}`);
@@ -217,7 +217,7 @@ const syncWorkspaceMemberUpdate = inngest.createFunction(
                     }
                 },
                 data: {
-                    role: String(data.role || data.role_name).toUpperCase()
+                    role: mapClerkRoleToPrisma(data.role || data.role_name) // Use the mapping function
                 }
             });
             console.log(`✅ Workspace member updated: ${data.user_id} in ${data.organization_id}`);
