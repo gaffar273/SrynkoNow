@@ -117,14 +117,23 @@ const syncWorkspace = inngest.createFunction(
 
             // Create owner as admin if they don't exist (this means it's a new workspace)
             if (!existingMember && data.created_by) {
-                await prisma.workspaceMember.create({
-                    data: {
-                        userId: data.created_by,
-                        workspaceId: data.id,
-                        role: "ADMIN"
-                    }
+                // First verify the user exists in the database
+                const userExists = await prisma.user.findUnique({
+                    where: { id: data.created_by }
                 });
-                console.log(`✅ Workspace created with admin: ${data.id}`);
+
+                if (userExists) {
+                    await prisma.workspaceMember.create({
+                        data: {
+                            userId: data.created_by,
+                            workspaceId: data.id,
+                            role: "ADMIN"
+                        }
+                    });
+                    console.log(`✅ Workspace created with admin: ${data.id}`);
+                } else {
+                    console.log(`⚠️ Workspace created but user ${data.created_by} not found in database yet`);
+                }
             } else {
                 console.log(`✅ Workspace updated: ${data.id}`);
             }
@@ -164,16 +173,29 @@ const syncWorkspaceMemberCreation = inngest.createFunction(
         const { data } = event;
         
         try {
+            console.log('📋 Membership data received:', JSON.stringify(data, null, 2));
+            
+            // Extract user_id and organization_id from the data
+            const userId = data.public_user_data?.user_id || data.user_id;
+            const workspaceId = data.organization?.id || data.organization_id;
+            const role = data.role || 'MEMBER';
+            
+            if (!userId || !workspaceId) {
+                console.error('❌ Missing userId or workspaceId:', { userId, workspaceId, data });
+                throw new Error('Missing required fields: userId or workspaceId');
+            }
+
             await prisma.workspaceMember.create({
                 data: {
-                    userId: data.user_id,
-                    workspaceId: data.organization_id,
-                    role: String(data.role || data.role_name).toUpperCase()
+                    userId: userId,
+                    workspaceId: workspaceId,
+                    role: String(role).toUpperCase()
                 }
             });
-            console.log(`✅ Workspace member created: ${data.user_id} in ${data.organization_id}`);
+            console.log(`✅ Workspace member created: ${userId} in ${workspaceId}`);
         } catch (error) {
             console.error('❌ Error creating workspace member:', error);
+            console.error('Event data was:', JSON.stringify(data, null, 2));
             throw error;
         }
     }
