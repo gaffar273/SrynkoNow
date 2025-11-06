@@ -4,6 +4,21 @@ import prisma from "../configs/prisma.js";
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "SrynkoNow" });
 
+// Helper function to map Clerk roles to Prisma WorkspaceRole enum
+function mapClerkRoleToPrisma(clerkRole) {
+    const roleString = String(clerkRole).toUpperCase();
+    
+    // Map Clerk's organization roles to your Prisma enum
+    if (roleString.includes('ADMIN')) {
+        return 'ADMIN';
+    } else if (roleString.includes('MEMBER')) {
+        return 'MEMBER';
+    }
+    
+    // Default to MEMBER if unknown role
+    return 'MEMBER';
+}
+
 // Function to sync user creation from Clerk
 const syncUserCreation = inngest.createFunction(
     { id: 'sync-user-from-clerk' },
