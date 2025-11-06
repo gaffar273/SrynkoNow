@@ -1,11 +1,24 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { dummyWorkspaces } from "../assets/assets";
+import api from "../configs/api.js";
 
 const initialState = {
-    workspaces: dummyWorkspaces || [],
-    currentWorkspace: dummyWorkspaces[1],
+    workspaces: [],
+    currentWorkspace: null,
     loading: false,
 };
+
+//fwtch work-space
+export const fetchWorkSpaces = createAsyncThunk('workspace/fetchWorkSpaces', async ({ getToken }) => {
+    try {
+        const { data } = await api.get('/api/workspaces', { headers: { Authorization: `Barer ${await getToken()}` } })
+        return data.workspaces || []
+    } catch (error) {
+        console.log(error?.response?.data?.message || error.message)
+        return []
+    }
+})
+
 
 const workspaceSlice = createSlice({
     name: "workspace",
@@ -103,6 +116,31 @@ const workspaceSlice = createSlice({
             );
         }
 
+    },
+    extraReducers: (builder) => {
+        builder.addCase(fetchWorkSpaces.pending, (state) => {
+            state.loading = true
+        });
+        builder.addCase(fetchWorkSpaces.fulfilled, (state, action) => {
+            state.workspaces = action.payload
+            if (action.payload.length > 0) {
+                const localStorageCurrentWorkspaceId = localStorage.getItem("currentWorkspaceId");
+                if (localStorageCurrentWorkspaceId) {
+                    const findWorkspace = action.payload.find((w) => w.id === localStorageCurrentWorkspaceId);
+                    if (findWorkspace) {
+                        state.currentWorkspace = findWorkspace
+                    } else {
+                        state.currentWorkspace = action.payload[0]
+                    }
+                } else {
+                    state.currentWorkspace = action.payload[0]
+                }
+            }
+            state.loading = false
+        });
+        builder.addCase(fetchWorkSpaces.rejected, (state) => {
+            state.loading = false
+        })
     }
 });
 
